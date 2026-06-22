@@ -690,30 +690,22 @@ def home_page():
 SHARED_PAGE_CSS = """
 <style>
 :root {
-    --u: clamp(13px, 1.8vw, 24px);
+    /* ── Satu unit skala dasar ── */
+    --u: clamp(16px, 1.8vw, 24px);
+
+    /* ── Header bar — MIN restored: 64px, MAX kept: 64px ── */
     --header-h:       clamp(64px, 6vw, 64px);
+
+    /* ── Back button — MIN restored: 44px/24px, MAX kept: 48px/26px ── */
     --back-btn-size:  clamp(44px, 6vw, 48px);
     --back-icon-size: clamp(24px, 3.5vw, 26px);
+
+
     --action-btn-h:      calc(var(--u) * 4.2);
     --action-btn-fs:     calc(var(--u) * 1.3);
     --action-btn-fw:     600;
     --action-btn-radius: 8px;
     --action-btn-pad-x:  calc(var(--u) * 1.3);
-}
-
-@media (max-width: 480px) { 
-    .upload-title,
-    .scenario-title {
-        font-size: 22px !important;
-    }
-
-    .upload-desc {
-        font-size: 14px !important;
-    }
-
-    .file-name {
-        font-size: 14px !important;
-    }
 }
 </style>
 """
