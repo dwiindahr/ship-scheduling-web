@@ -609,7 +609,7 @@ def home_page():
         }}
 
         .hero-title {{
-            font-size: clamp(28px, 7vw, 76px);
+            font-size: clamp(28px, 4.2vw, 44px);
             font-weight: 900;
             line-height: 1.05;
             color: #000000;
@@ -619,7 +619,7 @@ def home_page():
         }}
 
         .hero-subtitle {{
-            font-size: clamp(11px, 2.5vw, 34px);
+            font-size: clamp(11px, 1.8vw, 22px);
             font-weight: 900;
             color: #f04b13;
             line-height: 1.35;
@@ -751,7 +751,7 @@ def upload_page():
         }
 
         .upload-title {
-            font-size: clamp(18px, 6.2vw, 58px);
+            font-size: clamp(18px, 3.6vw, 36px);
             font-weight: 800;
             color: #000000;
             margin-bottom: calc(var(--u) * 0.6);
@@ -982,7 +982,7 @@ def scenario_page():
 }
 
 .scenario-title {
-    font-size: clamp(18px, 6.2vw, 58px);
+    font-size: clamp(18px, 3.6vw, 36px);
     font-weight: 800;
     color: #000000;
     margin-bottom: calc(var(--u) * 1.5);
