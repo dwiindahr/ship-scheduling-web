@@ -1040,7 +1040,7 @@ def scenario_page():
     height: var(--file-card-h);
     align-items: center !important;
     box-sizing: border-box;
-    padding: 0 calc(var(--u) * 0.5) 0 var(--file-card-pad-x);
+    padding: 0 var(--file-card-pad-x);
     gap: 0 !important;
 }
 
@@ -1102,10 +1102,15 @@ def scenario_page():
     text-overflow: ellipsis;
 }
 
+.st-key-file_card_box [data-testid="stColumn"]:has(.st-key-remove_file) {
+    justify-content: flex-end !important;
+}
+
 /* ── Tombol X asli Streamlit, di kolom kanan file-card ── */
 .st-key-file_card_box .st-key-remove_file {
     display: flex !important;
     justify-content: flex-end !important;
+    width: 100% !important;
 }
 
 .st-key-file_card_box .st-key-remove_file button {
