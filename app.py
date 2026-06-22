@@ -610,7 +610,7 @@ def home_page():
 
         /* MIN restored: 28px (was 28px before) — MAX reduced to 44px */
         .hero-title {{
-            font-size: clamp(32px, 4.2vw, 44px);
+            font-size: clamp(28px, 4.2vw, 44px);
             font-weight: 900;
             line-height: 1.05;
             color: #000000;
@@ -621,7 +621,7 @@ def home_page():
 
         /* MIN restored: 11px (was 11px before) — MAX reduced to 22px */
         .hero-subtitle {{
-            font-size: clamp(14px, 1.8vw, 22px);
+            font-size: clamp(11px, 1.8vw, 22px);
             font-weight: 900;
             color: #f04b13;
             line-height: 1.35;
@@ -687,35 +687,33 @@ def home_page():
         st.rerun()
 
 
-# =========================
-# SHARED CSS TOKENS
-# Token --u, --header-h, --back-btn-size, --back-icon-size, dan --action-btn-*
-# dipakai SAMA persis di upload_page, scenario_page, DAN result_page
-# sehingga ukuran & posisi tombol selalu identik di ketiga halaman.
-# MIN values restored to originals; MAX values kept as current.
-# =========================
 SHARED_PAGE_CSS = """
 <style>
 :root {
-    /* ── Satu unit skala dasar ── */
-    --u: clamp(16px, 1.8vw, 24px);
-
-    /* ── Header bar — MIN restored: 64px, MAX kept: 64px ── */
+    --u: clamp(13px, 1.8vw, 24px);
     --header-h:       clamp(64px, 6vw, 64px);
-
-    /* ── Back button — MIN restored: 44px/24px, MAX kept: 48px/26px ── */
     --back-btn-size:  clamp(44px, 6vw, 48px);
     --back-icon-size: clamp(24px, 3.5vw, 26px);
-
-    /* ── Action button — proportional via --u (MIN auto = 13px × multiplier)
-       multipliers chosen to match original MIN sizes:
-         original action-btn-h MIN ≈ 55px → u × 4.2 → 13 × 4.2 = 54.6 ✓
-         original action-btn-fs MIN ≈ 17px → u × 1.3 → 13 × 1.3 = 16.9 ✓  */
     --action-btn-h:      calc(var(--u) * 4.2);
     --action-btn-fs:     calc(var(--u) * 1.3);
     --action-btn-fw:     600;
     --action-btn-radius: 8px;
     --action-btn-pad-x:  calc(var(--u) * 1.3);
+}
+
+@media (max-width: 480px) { 
+    .upload-title,
+    .scenario-title {
+        font-size: 22px !important;
+    }
+
+    .upload-desc {
+        font-size: 14px !important;
+    }
+
+    .file-name {
+        font-size: 14px !important;
+    }
 }
 </style>
 """
@@ -759,7 +757,7 @@ def upload_page():
 
         /* MIN restored: 18px — MAX kept: 36px */
         .upload-title {
-            font-size: clamp(22px, 3.6vw, 36px);
+            font-size: clamp(18px, 3.6vw, 36px);
             font-weight: 800;
             color: #000000;
             margin-bottom: calc(var(--u) * 0.6);
@@ -989,7 +987,7 @@ def scenario_page():
 
 /* MIN restored: 18px — MAX kept: 36px */
 .scenario-title {
-    font-size: clamp(22px, 3.6vw, 36px);
+    font-size: clamp(18px, 3.6vw, 36px);
     font-weight: 800;
     color: #000000;
     margin-bottom: calc(var(--u) * 1.5);
@@ -1581,7 +1579,7 @@ def result_page():
 
     st.markdown(
         '<div style="padding-top:calc(var(--header-h) + clamp(8px, 2.5vw, 32px)); text-align:center;">'
-        '<div style="font-size:clamp(22px,3.5vw,42px); font-weight:800; color:#000; margin-bottom:clamp(14px, 2.5vw, 28px); font-family:Poppins,sans-serif; padding:0 16px;">'
+        '<div style="font-size:clamp(18px,3.5vw,42px); font-weight:800; color:#000; margin-bottom:clamp(14px, 2.5vw, 28px); font-family:Poppins,sans-serif; padding:0 16px;">'
         'Berthing schedules have been generated!'
         '</div>'
         '</div>',
