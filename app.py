@@ -704,7 +704,7 @@ SHARED_PAGE_CSS = """
 
     /* ── Action button (Select Excel / Single Berthing / Re-berthing) ──
        Semua tombol aksi di kedua halaman memakai token yang sama. */
-    --action-btn-h:      calc(var(--u) * 1.7);
+    --action-btn-h:      calc(var(--u) * 2.1);
     --action-btn-fs:     calc(var(--u) * 0.6);
     --action-btn-fw:     600;
     --action-btn-radius: 8px;
@@ -967,11 +967,11 @@ def scenario_page():
 
 /* ── shared card & button-row tokens ── */
 :root {
-    --card-w: min(1000px, 88vw);
+    --card-w: min(1000px, 92vw);
     --btn-gap: calc(var(--u) * 1.2);
 
-    --file-card-h:    calc(var(--u) * 5.2);
-    --file-card-mb:   calc(var(--u) * 2.6);
+    --file-card-h:    calc(var(--u) * 3.4);
+    --file-card-mb:   calc(var(--u) * 1.4);
     --file-card-pad-x: calc(var(--u) * 1.6);
     --remove-btn-size: calc(var(--u) * 2.6);
 }
