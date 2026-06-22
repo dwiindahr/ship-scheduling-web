@@ -710,22 +710,31 @@ SHARED_PAGE_CSS = """
     .scenario-title {
         font-size: 22px !important;
     }
-
     .upload-desc {
         font-size: 13px !important;
     }
-
     .file-name {
         font-size: 13px !important;
     }
-
     .st-key-single_scenario button p,
     .st-key-reberthing_scenario button p {
         font-size: 13px !important;
     }
-
     div[data-testid="stFileUploader"] button::after {
         font-size: 13px !important;
+    }
+
+    /* Tombol X file card — paksa ukuran & posisi fixed di HP */
+    .st-key-remove_file {
+        width: 36px !important;
+        top: calc(50% - 18px) !important;
+        right: 12px !important;
+    }
+
+    .st-key-remove_file button {
+        width: 36px !important;
+        height: 36px !important;
+        min-width: 36px !important;
     }
 }
 </style>
