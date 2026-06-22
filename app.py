@@ -694,24 +694,43 @@ def home_page():
 SHARED_PAGE_CSS = """
 <style>
 :root {
-    /* ── Satu unit skala dasar, semua elemen turunan dari sini ── */
     --u: clamp(13px, 1.8vw, 24px);
-
-    /* ── Header bar ── */
     --header-h:       clamp(56px, 6vw, 64px);
     --back-btn-size:  clamp(40px, 6vw, 48px);
     --back-icon-size: clamp(22px, 3.5vw, 26px);
-
-    /* ── Action button (Select Excel / Single Berthing / Re-berthing) ──
-       Semua tombol aksi di kedua halaman memakai token yang sama. */
     --action-btn-h:      calc(var(--u) * 2.1);
     --action-btn-fs:     calc(var(--u) * 0.6);
     --action-btn-fw:     600;
     --action-btn-radius: 8px;
     --action-btn-pad-x:  calc(var(--u) * 1.3);
 }
+
+@media (max-width: 480px) {
+    .upload-title,
+    .scenario-title {
+        font-size: 22px !important;
+    }
+
+    .upload-desc {
+        font-size: 13px !important;
+    }
+
+    .file-name {
+        font-size: 13px !important;
+    }
+
+    .st-key-single_scenario button p,
+    .st-key-reberthing_scenario button p {
+        font-size: 13px !important;
+    }
+
+    div[data-testid="stFileUploader"] button::after {
+        font-size: 13px !important;
+    }
+}
 </style>
 """
+
 
 
 # =========================
