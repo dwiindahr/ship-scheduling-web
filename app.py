@@ -608,7 +608,6 @@ def home_page():
             box-sizing: border-box;
         }}
 
-        /* MIN restored: 28px (was 28px before) — MAX reduced to 44px */
         .hero-title {{
             font-size: clamp(28px, 4.2vw, 44px);
             font-weight: 900;
@@ -619,7 +618,6 @@ def home_page():
             word-break: break-word;
         }}
 
-        /* MIN restored: 11px (was 11px before) — MAX reduced to 22px */
         .hero-subtitle {{
             font-size: clamp(11px, 1.8vw, 22px);
             font-weight: 900;
@@ -689,36 +687,67 @@ def home_page():
 
 # =========================
 # SHARED CSS TOKENS
-# Token --u, --header-h, --back-btn-size, --back-icon-size, dan --action-btn-*
-# dipakai SAMA persis di upload_page, scenario_page, DAN result_page
-# sehingga ukuran & posisi tombol selalu identik di ketiga halaman.
-# MIN values restored to originals; MAX values kept as current.
+# Definisi token --u, --header-h, --back-btn-size, --back-icon-size,
+# dan --action-btn-* dipakai SAMA persis di upload_page dan scenario_page
+# sehingga ukuran & posisi tombol selalu identik di kedua halaman.
 # =========================
 SHARED_PAGE_CSS = """
 <style>
 :root {
-    /* ── Satu unit skala dasar ── */
     --u: clamp(13px, 1.8vw, 24px);
-
-    /* ── Header bar — MIN restored: 64px, MAX kept: 64px ── */
     --header-h:       clamp(64px, 6vw, 64px);
-
-    /* ── Back button — MIN restored: 44px/24px, MAX kept: 48px/26px ── */
     --back-btn-size:  clamp(44px, 6vw, 48px);
     --back-icon-size: clamp(24px, 3.5vw, 26px);
-
-    /* ── Action button — proportional via --u (MIN auto = 13px × multiplier)
-       multipliers chosen to match original MIN sizes:
-         original action-btn-h MIN ≈ 55px → u × 4.2 → 13 × 4.2 = 54.6 ✓
-         original action-btn-fs MIN ≈ 17px → u × 1.3 → 13 × 1.3 = 16.9 ✓  */
-    --action-btn-h:      calc(var(--u) * 4.2);
-    --action-btn-fs:     calc(var(--u) * 1.3);
+    --action-btn-h:      calc(var(--u) * 2.1);
+    --action-btn-fs:     calc(var(--u) * 0.6);
     --action-btn-fw:     600;
     --action-btn-radius: 8px;
     --action-btn-pad-x:  calc(var(--u) * 1.3);
 }
+
+@media (max-width: 480px) {
+    .upload-title,
+    .scenario-title {
+        font-size: 22px !important;
+    }
+    .upload-desc {
+        font-size: 13px !important;
+    }
+    .st-key-single_scenario button p,
+    .st-key-reberthing_scenario button p {
+        font-size: 13px !important;
+    }
+    div[data-testid="stFileUploader"] button::after {
+        font-size: 13px !important;
+    }
+
+    /* ── File card — paksa ukuran tetap proporsional di HP, jangan
+       ikut menyusut ke MIN --u yang terlalu kecil ── */
+    .st-key-file_card_box {
+        --file-card-h: 84px !important;
+    }
+
+    .st-key-file_card_box [data-testid="stHorizontalBlock"] {
+        flex-wrap: nowrap !important;
+    }
+
+    .file-left {
+        gap: 10px !important;
+    }
+
+    .excel-icon {
+        width: 24px !important;
+        height: 24px !important;
+        font-size: 11px !important;
+    }
+
+    .file-name {
+        font-size: 12px !important;
+    }
+}
 </style>
 """
+
 
 
 # =========================
@@ -757,7 +786,6 @@ def upload_page():
             margin-top: calc(var(--header-h) + calc(var(--u) * 1.5));
         }
 
-        /* MIN restored: 18px — MAX kept: 36px */
         .upload-title {
             font-size: clamp(18px, 3.6vw, 36px);
             font-weight: 800;
@@ -766,10 +794,8 @@ def upload_page():
             white-space: nowrap;
         }
 
-        /* proportional via --u; MIN auto = 13 × 0.55 ≈ 7px (small screens)
-           original was bare var(--u) ≈ 13px — restored multiplier to 1.0 */
         .upload-desc {
-            font-size: calc(var(--u) * 1.0);
+            font-size: calc(var(--u) * 0.55);
             font-weight: 400;
             color: #000000;
             line-height: 1.45;
@@ -777,7 +803,8 @@ def upload_page():
             padding: 0 5vw;
         }
 
-        /* ── Back button ── */
+        /* ── Back button — scoped ke key-nya agar tidak bentrok dengan
+           tombol lain di halaman ini ── */
         .st-key-back_home button {
             position: fixed;
             top: calc((var(--header-h) - var(--back-btn-size)) / 2);
@@ -815,7 +842,7 @@ def upload_page():
             box-shadow: none !important;
         }
 
-        /* ── File uploader ── */
+        /* ── File uploader — tampil sebagai tombol ── */
         div[data-testid="stFileUploader"] {
             width: auto !important;
             max-width: 92vw !important;
@@ -847,7 +874,8 @@ def upload_page():
             display: none;
         }
 
-        /* "Select Excel file" button — sama dengan tombol skenario via shared tokens */
+        /* Tombol "Select Excel file" — ukuran & font sama persis dengan
+           tombol skenario di scenario_page via token bersama */
         div[data-testid="stFileUploader"] button {
             position: relative !important;
             display: inline-flex !important;
@@ -907,10 +935,12 @@ def upload_page():
     # gradient bar
     st.markdown('<div class="top-gradient"></div>', unsafe_allow_html=True)
 
+    # tombol back — sekarang scoped via .st-key-back_home
     if st.button("❮", key="back_home"):
         st.session_state["page"] = "home"
         st.rerun()
 
+    # konten utama
     st.markdown(
         dedent("""
         <div class="upload-content">
@@ -976,8 +1006,8 @@ def scenario_page():
     --card-w: min(1000px, 92vw);
     --btn-gap: calc(var(--u) * 1.2);
 
-    --file-card-h:     calc(var(--u) * 3.4);
-    --file-card-mb:    calc(var(--u) * 1.4);
+    --file-card-h:    calc(var(--u) * 4.2);
+    --file-card-mb:   calc(var(--u) * 1.4);
     --file-card-pad-x: calc(var(--u) * 1.6);
     --remove-btn-size: calc(var(--u) * 2.6);
 }
@@ -987,7 +1017,6 @@ def scenario_page():
     margin-top: calc(var(--header-h) + calc(var(--u) * 1));
 }
 
-/* MIN restored: 18px — MAX kept: 36px */
 .scenario-title {
     font-size: clamp(18px, 3.6vw, 36px);
     font-weight: 800;
@@ -996,22 +1025,50 @@ def scenario_page():
     white-space: nowrap;
 }
 
-/* ── File card ── */
-.file-card {
+/* ── File card wrapper — st.container(key="file_card_box") membungkus
+   kolom HTML + tombol X asli supaya keduanya berada di parent yang sama
+   dan punya lebar terbatas sesuai --card-w ── */
+.st-key-file_card_box {
     width: var(--card-w);
-    height: var(--file-card-h);
     margin: 0 auto var(--file-card-mb) auto;
+}
+
+.st-key-file_card_box [data-testid="stHorizontalBlock"] {
     border: 2px solid #9d9d9d;
     border-radius: 9px;
     background: white;
-
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: calc(var(--u) * 0.5);
-    padding: 0 var(--file-card-pad-x);
+    height: var(--file-card-h);
+    align-items: center !important;
     box-sizing: border-box;
-    position: relative;
+    padding: 0 calc(var(--u) * 0.5) 0 var(--file-card-pad-x);
+    gap: 0 !important;
+}
+
+.st-key-file_card_box [data-testid="stColumn"] {
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    height: 100% !important;
+}
+
+.st-key-file_card_box [data-testid="stColumn"] > div {
+    width: 100%;
+}
+
+.st-key-file_card_box [data-testid="stVerticalBlock"] {
+    gap: 0 !important;
+}
+
+.st-key-file_card_box [data-testid="stVerticalBlockBorderWrapper"],
+.st-key-file_card_box [data-testid="element-container"],
+.st-key-file_card_box [data-testid="stMarkdownContainer"] {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+}
+
+.st-key-file_card_box [data-testid="stMarkdownContainer"] > div {
+    margin: 0 !important;
 }
 
 .file-left {
@@ -1019,11 +1076,8 @@ def scenario_page():
     align-items: center;
     gap: calc(var(--u) * 1.2);
     min-width: 0;
-    flex: 1 1 auto;
 }
 
-/* MIN auto = 13 × 1.6 = 20.8px (restored from original u × 2.4 → 31.2px;
-   keeping current proportional value u × 1.6 since MAX is already reduced) */
 .excel-icon {
     width: calc(var(--u) * 1.6);
     height: calc(var(--u) * 1.6);
@@ -1039,10 +1093,8 @@ def scenario_page():
     justify-content: center;
 }
 
-/* MIN auto = 13 × 0.65 = 8.45px; original was bare var(--u) = 13px
-   restore multiplier to 1.0 */
 .file-name {
-    font-size: calc(var(--u) * 1.0);
+    font-size: calc(var(--u) * 0.65);
     font-weight: 500;
     color: #000000;
     white-space: nowrap;
@@ -1050,14 +1102,48 @@ def scenario_page():
     text-overflow: ellipsis;
 }
 
-/* MIN auto = 13 × 0.9 = 11.7px; original was u × 1.4 = 18.2px
-   restore multiplier to 1.4 */
-.file-close {
-    font-size: calc(var(--u) * 1.4);
-    font-weight: 300;
-    color: #333333;
-    line-height: 1;
-    flex-shrink: 0;
+/* ── Tombol X asli Streamlit, di kolom kanan file-card ── */
+.st-key-file_card_box .st-key-remove_file {
+    display: flex !important;
+    justify-content: flex-end !important;
+}
+
+.st-key-file_card_box .st-key-remove_file button {
+    width: var(--remove-btn-size) !important;
+    height: var(--remove-btn-size) !important;
+    min-width: var(--remove-btn-size) !important;
+
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.st-key-file_card_box .st-key-remove_file button p {
+    font-size: calc(var(--u) * 0.9) !important;
+    font-weight: 300 !important;
+    color: #333333 !important;
+    line-height: 1 !important;
+    margin: 0 !important;
+}
+
+.st-key-file_card_box .st-key-remove_file button:hover {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+.st-key-file_card_box .st-key-remove_file button:focus {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    outline: none !important;
 }
 
 /* ── Back button ── */
@@ -1122,7 +1208,8 @@ def scenario_page():
     width: 100% !important;
 }
 
-/* ── Tombol Single / Re-berthing — identik dengan "Select Excel file" ── */
+/* ── Tombol Single / Re-berthing — ukuran identik dengan "Select Excel file"
+   via token bersama --action-btn-* ── */
 .st-key-single_scenario button,
 .st-key-reberthing_scenario button {
     width: 100% !important;
@@ -1174,47 +1261,6 @@ def scenario_page():
         width: 100% !important;
     }
 }
-
-/* ── Tombol X di file card ── */
-.st-key-remove_file {
-    position: absolute !important;
-    top: calc(50% - (var(--remove-btn-size) / 2)) !important;
-    right: calc(var(--file-card-pad-x) - calc(var(--u) * 0.4)) !important;
-    width: var(--remove-btn-size) !important;
-    z-index: 3;
-}
-
-.st-key-remove_file button {
-    position: relative !important;
-
-    width: var(--remove-btn-size) !important;
-    height: var(--remove-btn-size) !important;
-    min-width: var(--remove-btn-size) !important;
-
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    outline: none !important;
-    padding: 0 !important;
-    margin: 0 !important;
-
-    color: transparent !important;
-    font-size: 0 !important;
-}
-
-.st-key-remove_file button p {
-    display: none !important;
-}
-
-.st-key-remove_file button:hover,
-.st-key-remove_file button:focus,
-.st-key-remove_file button:active {
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    outline: none !important;
-    color: transparent !important;
-}
 </style>
 """, unsafe_allow_html=True)
 
@@ -1229,31 +1275,32 @@ def scenario_page():
         st.session_state["page"] = "upload"
         st.rerun()
 
-    # Header + file card
-    scenario_html = (
-        '<div class="scenario-content-wrapper">'
-            '<div class="scenario-content">'
-                '<div class="scenario-title">Schedule Ship Berthing</div>'
-
-                '<div class="file-card">'
-                    '<div class="file-left">'
-                        '<div class="excel-icon">X</div>'
-                        f'<div class="file-name">{uploaded_name}</div>'
-                    '</div>'
-                    '<div class="file-close">×</div>'
-                '</div>'
-            '</div>'
-        '</div>'
+    # Header
+    st.markdown(
+        '<div class="scenario-content">'
+            '<div class="scenario-title">Schedule Ship Berthing</div>'
+        '</div>',
+        unsafe_allow_html=True
     )
-    st.markdown(scenario_html, unsafe_allow_html=True)
 
-    # Invisible X button overlapping the × in file card
-    if st.button(" ", key="remove_file"):
-        if "uploaded_file" in st.session_state:
-            del st.session_state["uploaded_file"]
-        clear_arrival_state()
-        st.session_state["page"] = "upload"
-        st.rerun()
+    # File card — kolom kiri (HTML: icon + nama file), kolom kanan (tombol X asli)
+    with st.container(key="file_card_box"):
+        col_file, col_x = st.columns([0.85, 0.15])
+        with col_file:
+            st.markdown(
+                f'<div class="file-left">'
+                    f'<div class="excel-icon">X</div>'
+                    f'<div class="file-name">{uploaded_name}</div>'
+                f'</div>',
+                unsafe_allow_html=True
+            )
+        with col_x:
+            if st.button("×", key="remove_file"):
+                if "uploaded_file" in st.session_state:
+                    del st.session_state["uploaded_file"]
+                clear_arrival_state()
+                st.session_state["page"] = "upload"
+                st.rerun()
 
     LOADING_HTML = """
     <style>
@@ -1492,11 +1539,6 @@ def scenario_page():
 
 
 def result_page():
-    # ── result_page now uses the same SHARED_PAGE_CSS tokens ──
-    # so --header-h, --back-btn-size, --back-icon-size are identical
-    # across all three pages.
-    st.markdown(SHARED_PAGE_CSS, unsafe_allow_html=True)
-
     st.markdown("""
     <style>
     .stApp { background: #ffffff; }
@@ -1506,6 +1548,11 @@ def result_page():
         padding-right: 0rem !important;
         padding-bottom: 0rem !important;
         max-width: 100% !important;
+    }
+    :root {
+        --header-h: clamp(64px, 9vw, 90px);
+        --back-btn-size: clamp(44px, 8vw, 60px);
+        --back-icon-size: clamp(24px, 5vw, 34px);
     }
     .top-gradient {
         position: fixed;
@@ -1519,26 +1566,16 @@ def result_page():
         top: calc((var(--header-h) - var(--back-btn-size)) / 2);
         left: clamp(12px, 3vw, 24px);
         z-index: 9999;
-
         width: var(--back-btn-size) !important;
         height: var(--back-btn-size) !important;
-        min-width: var(--back-btn-size) !important;
-
         background: transparent !important;
         border: none !important;
-        border-radius: 0 !important;
         box-shadow: none !important;
         padding: 0 !important;
-        margin: 0 !important;
-
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
     }
     .st-key-back_result button p {
         margin: 0 !important;
         font-size: var(--back-icon-size) !important;
-        line-height: 1 !important;
         font-weight: 700 !important;
         color: white !important;
     }
