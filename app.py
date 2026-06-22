@@ -787,7 +787,7 @@ def upload_page():
         }
 
         .upload-title {
-            font-size: clamp(18px, 3.6vw, 36px);
+            font-size: clamp(23px, 3.6vw, 36px);
             font-weight: 800;
             color: #000000;
             margin-bottom: calc(var(--u) * 0.6);
@@ -897,6 +897,13 @@ def upload_page():
             white-space: nowrap !important;
 
             transition: background-color 0.15s ease;
+        }
+        /* ── DESKTOP ONLY: besarkan sedikit font
+        Scenario tanpa mengubah variable global --action-btn-fs ── */
+        @media (min-width: 701px) {
+            div[data-testid="stFileUploader"] button::after {
+               font-size: calc(var(--action-btn-fs) * 1.25) !important;
+            }
         }
 
         div[data-testid="stFileUploader"] button p,
@@ -1046,6 +1053,7 @@ def scenario_page():
 
 .st-key-file_card_box [data-testid="stColumn"] {
     padding: 0 !important;
+    margin: 0 !important;
     display: flex !important;
     align-items: center !important;
     height: 100% !important;
@@ -1053,6 +1061,7 @@ def scenario_page():
 
 .st-key-file_card_box [data-testid="stColumn"] > div {
     width: 100%;
+    margin: 0 !important;
 }
 
 .st-key-file_card_box [data-testid="stVerticalBlock"] {
@@ -1102,8 +1111,9 @@ def scenario_page():
     text-overflow: ellipsis;
 }
 
-.st-key-file_card_box [data-testid="stColumn"]:has(.st-key-remove_file) {
+.st-key-file_card_box [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(2) {
     justify-content: flex-end !important;
+    display: flex !important;
 }
 
 /* ── Tombol X asli Streamlit, di kolom kanan file-card ── */
@@ -1128,6 +1138,22 @@ def scenario_page():
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
+}
+
+/* ── DESKTOP ONLY: dorong tombol X benar-benar ke tepi kanan card,
+   terpisah total dari aturan mobile supaya tidak saling tabrakan ── */
+@media (min-width: 701px) {
+    .st-key-file_card_box [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(2) {
+        flex: 0 0 auto !important;
+        width: auto !important;
+        min-width: var(--remove-btn-size) !important;
+    }
+
+    .st-key-file_card_box .st-key-remove_file button {
+        position: relative !important;
+        right: -18px !important;
+        margin-left: auto !important;
+    }
 }
 
 .st-key-file_card_box .st-key-remove_file button p {
@@ -1240,6 +1266,15 @@ def scenario_page():
     margin: 0 !important;
 }
 
+/* ── DESKTOP ONLY: besarkan sedikit font tombol Single/Re-berthing
+   Scenario tanpa mengubah variable global --action-btn-fs ── */
+@media (min-width: 701px) {
+    .st-key-single_scenario button p,
+    .st-key-reberthing_scenario button p {
+        font-size: calc(var(--action-btn-fs) * 1.25) !important;
+    }
+}
+
 .st-key-single_scenario button:hover,
 .st-key-reberthing_scenario button:hover {
     background-color: #25009c !important;
@@ -1264,6 +1299,13 @@ def scenario_page():
     [data-testid="stHorizontalBlock"]:has(.st-key-single_scenario) > [data-testid="stColumn"] {
         flex: 1 1 100% !important;
         width: 100% !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .st-key-single_scenario button p,
+    .st-key-reberthing_scenario button p {
+        font-size: 13px !important;
     }
 }
 </style>
