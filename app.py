@@ -763,7 +763,7 @@ def upload_page():
             font-weight: 400;
             color: #000000;
             line-height: 1.45;
-            margin-bottom: calc(var(--u) * 3.4);
+            margin-bottom: calc(var(--u) * 1.5);
             padding: 0 5vw;
         }
 
