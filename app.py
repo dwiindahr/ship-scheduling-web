@@ -747,7 +747,7 @@ def upload_page():
 
         .upload-content {
             text-align: center;
-            margin-top: calc(var(--header-h) + calc(var(--u) * 3));
+            margin-top: calc(var(--header-h) + calc(var(--u) * 1.5));
         }
 
         .upload-title {
@@ -978,7 +978,7 @@ def scenario_page():
 
 .scenario-content {
     text-align: center;
-    margin-top: calc(var(--header-h) + calc(var(--u) * 2));
+    margin-top: calc(var(--header-h) + calc(var(--u) * 1));
 }
 
 .scenario-title {
@@ -1016,13 +1016,13 @@ def scenario_page():
 }
 
 .excel-icon {
-    width: calc(var(--u) * 2.4);
-    height: calc(var(--u) * 2.4);
+    width: calc(var(--u) * 1.6);
+    height: calc(var(--u) * 1.6);
     flex-shrink: 0;
     background: #107c41;
     border-radius: 4px;
     color: white;
-    font-size: calc(var(--u) * 1.3);
+    font-size: calc(var(--u) * 0.85);
     font-weight: 700;
 
     display: flex;
@@ -1031,7 +1031,7 @@ def scenario_page():
 }
 
 .file-name {
-    font-size: var(--u);
+    font-size: calc(var(--u) * 0.65);
     font-weight: 500;
     color: #000000;
     white-space: nowrap;
@@ -1040,7 +1040,7 @@ def scenario_page():
 }
 
 .file-close {
-    font-size: calc(var(--u) * 1.4);
+    font-size: calc(var(--u) * 0.9);
     font-weight: 300;
     color: #333333;
     line-height: 1;
