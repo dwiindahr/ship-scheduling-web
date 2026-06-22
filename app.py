@@ -579,7 +579,7 @@ def home_page():
 
         :root {{
             --home-pad-x: clamp(20px, 7vw, 128px);
-            --home-text-block-h: clamp(170px, 27vw, 270px);
+            --home-text-block-h: clamp(130px, 19vw, 190px);
         }}
 
         html, body {{
