@@ -704,11 +704,11 @@ SHARED_PAGE_CSS = """
 
     /* ── Action button (Select Excel / Single Berthing / Re-berthing) ──
        Semua tombol aksi di kedua halaman memakai token yang sama. */
-    --action-btn-h:      calc(var(--u) * 2.6);
-    --action-btn-fs:     calc(var(--u) * 0.85);
+    --action-btn-h:      calc(var(--u) * 1.7);
+    --action-btn-fs:     calc(var(--u) * 0.6);
     --action-btn-fw:     600;
-    --action-btn-radius: 10px;
-    --action-btn-pad-x:  calc(var(--u) * 1.8);
+    --action-btn-radius: 8px;
+    --action-btn-pad-x:  calc(var(--u) * 1.3);
 }
 </style>
 """
@@ -759,7 +759,7 @@ def upload_page():
         }
 
         .upload-desc {
-            font-size: calc(var(--u) * 0.7);
+            font-size: calc(var(--u) * 0.55);
             font-weight: 400;
             color: #000000;
             line-height: 1.45;
