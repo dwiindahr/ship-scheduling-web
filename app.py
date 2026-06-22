@@ -698,9 +698,9 @@ SHARED_PAGE_CSS = """
     --u: clamp(13px, 1.8vw, 24px);
 
     /* ── Header bar ── */
-    --header-h:       clamp(64px, 9vw, 90px);
-    --back-btn-size:  clamp(44px, 8vw, 60px);
-    --back-icon-size: clamp(24px, 5vw, 34px);
+    --header-h:       clamp(56px, 6vw, 64px);
+    --back-btn-size:  clamp(40px, 6vw, 48px);
+    --back-icon-size: clamp(22px, 3.5vw, 26px);
 
     /* ── Action button (Select Excel / Single Berthing / Re-berthing) ──
        Semua tombol aksi di kedua halaman memakai token yang sama. */
@@ -747,7 +747,7 @@ def upload_page():
 
         .upload-content {
             text-align: center;
-            margin-top: calc(var(--header-h) + calc(var(--u) * 7));
+            margin-top: calc(var(--header-h) + calc(var(--u) * 3));
         }
 
         .upload-title {
@@ -978,7 +978,7 @@ def scenario_page():
 
 .scenario-content {
     text-align: center;
-    margin-top: calc(var(--header-h) + calc(var(--u) * 4));
+    margin-top: calc(var(--header-h) + calc(var(--u) * 2));
 }
 
 .scenario-title {
