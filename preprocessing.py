@@ -374,3 +374,156 @@ def load_dermaga():
         dermaga[col] = pd.to_numeric(dermaga[col], errors="coerce")
 
     return dermaga
+
+
+# =========================
+# BERTH SUITABILITY VALIDATION
+# =========================
+def _berth_loa_ok(loa: float, berth: dict, config: dict, eps: float) -> bool:
+    jenis = str(berth.get("JENIS", "KONTINU")).strip().upper()
+    panjang = float(berth.get("PANJANG", 0))
+    loa_eff = loa + config.get("LOA_MARGIN_DISKRIT", 0) if jenis == "DISKRIT" else loa
+    return loa_eff <= panjang + eps
+
+
+def _berth_draft_ok_at_high_tide(draft: float, berth: dict, config: dict, eps: float) -> bool:
+    kedalaman = float(berth.get("KEDALAMAN", 0))
+    ukc = float(config.get("UNDER_KEEL_CLEARANCE", 0))
+    kdl_eff_pasang = kedalaman - ukc
+    return draft <= kdl_eff_pasang + eps
+
+
+def _berth_draft_ok_at_low_tide(draft: float, berth: dict, config: dict, eps: float) -> bool:
+    kedalaman = float(berth.get("KEDALAMAN", 0))
+    ukc = float(config.get("UNDER_KEEL_CLEARANCE", 0))
+    tide_delta = float(config.get("TIDE_DELTA", 0))
+    kdl_eff_surut = kedalaman - tide_delta - ukc
+    return draft <= kdl_eff_surut + eps
+
+
+def check_no_eligible_berth(df_kapal: pd.DataFrame, df_dermaga: pd.DataFrame, config: dict) -> list[str]:
+    eps = float(config.get("EPSILON", 1e-6))
+    berths = df_dermaga.to_dict("records")
+    errors = []
+
+    for _, ship in df_kapal.iterrows():
+        loa      = float(ship.get("LOA", 0))
+        draft    = float(ship.get("DRAFT", 0))
+        nama     = ship.get("NAMA_KAPAL", "Unknown")
+        kategori = str(ship.get("KATEGORI", "")).strip().upper()
+
+        has_eligible = any(
+            _berth_category_ok(kategori, berth)             # ← tambah ini
+            and _berth_loa_ok(loa, berth, config, eps)
+            and _berth_draft_ok_at_high_tide(draft, berth, config, eps)
+            for berth in berths
+        )
+
+        if not has_eligible:
+            errors.append(
+                f"Ship '{nama}' (Category: {kategori}, LOA {loa:g} m, Draft {draft:g} m) "
+                f"does not fit any berth at Jamrud Terminal, even at high tide. "
+                f"Please check the LOA/Draft values or contact the terminal "
+                f"for alternative arrangements."
+            )
+
+    return errors
+
+
+def _get_high_tide_windows(config: dict) -> list[float]:
+    required = [
+        "LOW_TIDE_1_START_H", "LOW_TIDE_1_END_H",
+        "LOW_TIDE_2_START_H", "LOW_TIDE_2_END_H",
+    ]
+    if not all(k in config for k in required):
+        return [24.0]  # fallback
+
+    s1_start = config["LOW_TIDE_1_START_H"]
+    s1_end   = config["LOW_TIDE_1_END_H"]
+    s2_start = config["LOW_TIDE_2_START_H"]
+    s2_end   = config["LOW_TIDE_2_END_H"]
+
+    pasang_1 = s1_start - 0.0           # 00:00 → awal surut 1
+    pasang_2 = s2_start - s1_end        # akhir surut 1 → awal surut 2
+    pasang_3 = (24.0 - s2_end) + s1_start  # akhir surut 2 → surut 1 hari berikut
+    #           (sisa malam)     + (pagi hari berikut sebelum surut 1 lagi)
+
+    windows = [w for w in [pasang_1, pasang_2, pasang_3] if w > 0]
+    return windows
+
+def _berth_category_ok(kategori: str, berth: dict) -> bool:
+    """Cek apakah kategori kapal diizinkan di berth ini."""
+    col_map = {
+        "PASSENGER": "PASSENGER",
+        "RORO"     : "RORO",
+        "CARGO"    : "CARGO",
+        "OTHER"    : "OTHER",
+    }
+    col = col_map.get(str(kategori).strip().upper())
+    if col is None:
+        return False
+    return bool(berth.get(col, 0))
+
+
+def check_single_berth_insufficient_time(
+    df_kapal: pd.DataFrame, df_dermaga: pd.DataFrame, config: dict
+) -> list[str]:
+    eps = float(config.get("EPSILON", 1e-6))
+    berths = df_dermaga.to_dict("records")
+    high_tide_windows = _get_high_tide_windows(config)
+    max_single_pasang = max(high_tide_windows) if high_tide_windows else 24.0
+    errors = []
+
+    for _, ship in df_kapal.iterrows():
+        loa          = float(ship.get("LOA", 0))
+        draft        = float(ship.get("DRAFT", 0))
+        service_time = float(ship.get("TOTAL_SERVICE_TIME", 0))
+        nama         = ship.get("NAMA_KAPAL", "Unknown")
+        kategori     = str(ship.get("KATEGORI", "")).strip().upper()
+
+        safe_at_high_tide = [
+            berth for berth in berths
+            if _berth_category_ok(kategori, berth)          # ← tambah ini
+            and _berth_loa_ok(loa, berth, config, eps)
+            and _berth_draft_ok_at_high_tide(draft, berth, config, eps)
+        ]
+
+        if not safe_at_high_tide:
+            continue
+
+        unsafe_at_low_tide = [
+            berth for berth in safe_at_high_tide
+            if not _berth_draft_ok_at_low_tide(draft, berth, config, eps)
+        ]
+
+        if not unsafe_at_low_tide:
+            continue
+
+        # Semua berth eligible hanya aman saat pasang
+        if len(unsafe_at_low_tide) != len(safe_at_high_tide):
+            continue
+
+        if service_time <= max_single_pasang + eps:
+            continue
+
+        nama_dermaga_list = ", ".join(
+            b.get("DERMAGA", b.get("ID", "Unknown")) for b in safe_at_high_tide
+        )
+
+        s1s = config.get("LOW_TIDE_1_START_H", 0)
+        s1e = config.get("LOW_TIDE_1_END_H", 0)
+        s2s = config.get("LOW_TIDE_2_START_H", 0)
+        s2e = config.get("LOW_TIDE_2_END_H", 0)
+        window_labels = [f"00:00–{s1s:.1f}h ({high_tide_windows[0]:.1f} jam)"]
+        if len(high_tide_windows) > 1:
+            window_labels.append(f"{s1e:.1f}h–{s2s:.1f}h ({high_tide_windows[1]:.1f} jam)")
+        if len(high_tide_windows) > 2:
+            window_labels.append(f"{s2e:.1f}h–24:00+{s1s:.1f}h ({high_tide_windows[2]:.1f} jam)")
+
+        errors.append(
+            f"'{nama}' (Draft {draft:g} m) only fits [{nama_dermaga_list}] at high tide, "
+            f"but service time ({service_time:g} hrs) exceeds max tide window "
+            f"(~{max_single_pasang:.1f} hrs). Use RE-BERTHING scenario."
+        )
+
+    return errors

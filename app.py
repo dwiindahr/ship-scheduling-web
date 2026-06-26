@@ -5,7 +5,10 @@ import io
 from pathlib import Path
 from textwrap import dedent
 from html import escape
-from preprocessing import preprocess, load_dermaga, limit_to_n_days
+from preprocessing import (
+    preprocess, load_dermaga, limit_to_n_days,
+    check_no_eligible_berth, check_single_berth_insufficient_time,
+)
 from config import CONFIG, WEIGHTS
 from optimizer_s1 import run_ch1, run_love_bird_optimization
 from optimizer_s2 import run_ch2, run_love_bird_s2
@@ -687,9 +690,6 @@ def home_page():
 
 # =========================
 # SHARED CSS TOKENS
-# Definisi token --u, --header-h, --back-btn-size, --back-icon-size,
-# dan --action-btn-* dipakai SAMA persis di upload_page dan scenario_page
-# sehingga ukuran & posisi tombol selalu identik di kedua halaman.
 # =========================
 SHARED_PAGE_CSS = """
 <style>
@@ -707,7 +707,8 @@ SHARED_PAGE_CSS = """
 
 @media (max-width: 480px) {
     .upload-title,
-    .scenario-title {
+    .scenario-title,
+    .result-title {
         font-size: 22px !important;
     }
     .upload-desc {
@@ -721,8 +722,6 @@ SHARED_PAGE_CSS = """
         font-size: 13px !important;
     }
 
-    /* ── File card — paksa ukuran tetap proporsional di HP, jangan
-       ikut menyusut ke MIN --u yang terlalu kecil ── */
     .st-key-file_card_box {
         --file-card-h: 84px !important;
     }
@@ -748,6 +747,43 @@ SHARED_PAGE_CSS = """
 </style>
 """
 
+# =========================
+# SHARED BACKGROUND RENDER
+# Render gradient bar + back button + header title + file card
+# Dipakai oleh scenario_page saat modal aktif maupun normal
+# =========================
+def _render_scenario_background(uploaded_name):
+    st.markdown('<div class="top-gradient"></div>', unsafe_allow_html=True)
+
+    if st.button("❮", key="back_scenario"):
+        clear_arrival_state()
+        st.session_state["page"] = "upload"
+        st.rerun()
+
+    st.markdown(
+        '<div class="scenario-content">'
+            '<div class="scenario-title">Schedule Ship Berthing</div>'
+        '</div>',
+        unsafe_allow_html=True
+    )
+
+    with st.container(key="file_card_box"):
+        col_file, col_x = st.columns([0.85, 0.15])
+        with col_file:
+            st.markdown(
+                f'<div class="file-left">'
+                    f'<div class="excel-icon">X</div>'
+                    f'<div class="file-name">{uploaded_name}</div>'
+                f'</div>',
+                unsafe_allow_html=True
+            )
+        with col_x:
+            if st.button("×", key="remove_file"):
+                if "uploaded_file" in st.session_state:
+                    del st.session_state["uploaded_file"]
+                clear_arrival_state()
+                st.session_state["page"] = "upload"
+                st.rerun()
 
 
 # =========================
@@ -803,8 +839,6 @@ def upload_page():
             padding: 0 5vw;
         }
 
-        /* ── Back button — scoped ke key-nya agar tidak bentrok dengan
-           tombol lain di halaman ini ── */
         .st-key-back_home button {
             position: fixed;
             top: calc((var(--header-h) - var(--back-btn-size)) / 2);
@@ -842,7 +876,6 @@ def upload_page():
             box-shadow: none !important;
         }
 
-        /* ── File uploader — tampil sebagai tombol ── */
         div[data-testid="stFileUploader"] {
             width: auto !important;
             max-width: 92vw !important;
@@ -874,8 +907,6 @@ def upload_page():
             display: none;
         }
 
-        /* Tombol "Select Excel file" — ukuran & font sama persis dengan
-           tombol skenario di scenario_page via token bersama */
         div[data-testid="stFileUploader"] button {
             position: relative !important;
             display: inline-flex !important;
@@ -898,8 +929,7 @@ def upload_page():
 
             transition: background-color 0.15s ease;
         }
-        /* ── DESKTOP ONLY: besarkan sedikit font
-        Scenario tanpa mengubah variable global --action-btn-fs ── */
+
         @media (min-width: 701px) {
             div[data-testid="stFileUploader"] button::after {
                font-size: calc(var(--action-btn-fs) * 1.25) !important;
@@ -939,15 +969,12 @@ def upload_page():
         unsafe_allow_html=True
     )
 
-    # gradient bar
     st.markdown('<div class="top-gradient"></div>', unsafe_allow_html=True)
 
-    # tombol back — sekarang scoped via .st-key-back_home
     if st.button("❮", key="back_home"):
         st.session_state["page"] = "home"
         st.rerun()
 
-    # konten utama
     st.markdown(
         dedent("""
         <div class="upload-content">
@@ -1008,7 +1035,6 @@ def scenario_page():
     z-index: 1;
 }
 
-/* ── shared card & button-row tokens ── */
 :root {
     --card-w: min(1000px, 92vw);
     --btn-gap: calc(var(--u) * 1.2);
@@ -1025,16 +1051,13 @@ def scenario_page():
 }
 
 .scenario-title {
-    font-size: clamp(18px, 3.6vw, 36px);
+    font-size: clamp(23px, 3.6vw, 36px);
     font-weight: 800;
     color: #000000;
     margin-bottom: calc(var(--u) * 1.5);
     white-space: nowrap;
 }
 
-/* ── File card wrapper — st.container(key="file_card_box") membungkus
-   kolom HTML + tombol X asli supaya keduanya berada di parent yang sama
-   dan punya lebar terbatas sesuai --card-w ── */
 .st-key-file_card_box {
     width: var(--card-w);
     margin: 0 auto var(--file-card-mb) auto;
@@ -1116,7 +1139,6 @@ def scenario_page():
     display: flex !important;
 }
 
-/* ── Tombol X asli Streamlit, di kolom kanan file-card ── */
 .st-key-file_card_box .st-key-remove_file {
     display: flex !important;
     justify-content: flex-end !important;
@@ -1140,8 +1162,6 @@ def scenario_page():
     justify-content: center !important;
 }
 
-/* ── DESKTOP ONLY: dorong tombol X benar-benar ke tepi kanan card,
-   terpisah total dari aturan mobile supaya tidak saling tabrakan ── */
 @media (min-width: 701px) {
     .st-key-file_card_box [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(2) {
         flex: 0 0 auto !important;
@@ -1177,7 +1197,6 @@ def scenario_page():
     outline: none !important;
 }
 
-/* ── Back button ── */
 .st-key-back_scenario button {
     position: fixed;
     top: calc((var(--header-h) - var(--back-btn-size)) / 2);
@@ -1215,7 +1234,6 @@ def scenario_page():
     box-shadow: none !important;
 }
 
-/* ── Scenario button row ── */
 [data-testid="stHorizontalBlock"]:has(.st-key-single_scenario) {
     width: var(--card-w) !important;
     margin: 0 auto !important;
@@ -1239,8 +1257,6 @@ def scenario_page():
     width: 100% !important;
 }
 
-/* ── Tombol Single / Re-berthing — ukuran identik dengan "Select Excel file"
-   via token bersama --action-btn-* ── */
 .st-key-single_scenario button,
 .st-key-reberthing_scenario button {
     width: 100% !important;
@@ -1266,8 +1282,6 @@ def scenario_page():
     margin: 0 !important;
 }
 
-/* ── DESKTOP ONLY: besarkan sedikit font tombol Single/Re-berthing
-   Scenario tanpa mengubah variable global --action-btn-fs ── */
 @media (min-width: 701px) {
     .st-key-single_scenario button p,
     .st-key-reberthing_scenario button p {
@@ -1289,7 +1303,6 @@ def scenario_page():
     box-shadow: none !important;
 }
 
-/* ── Narrow viewport: tombol scenario stack vertikal ── */
 @media (max-width: 700px) {
     [data-testid="stHorizontalBlock"]:has(.st-key-single_scenario) {
         flex-wrap: wrap !important;
@@ -1311,43 +1324,16 @@ def scenario_page():
 </style>
 """, unsafe_allow_html=True)
 
-    # Gradient bar
-    st.markdown('<div class="top-gradient"></div>', unsafe_allow_html=True)
+    # ── Render background SEKALI ───────────────────────────────────
+    _render_scenario_background(uploaded_name)
+
+    # ── Render modal di atas background ────────────────────────────
     render_modal()
     render_arrival_limit_modal()
 
-    # Tombol back
-    if st.button("❮", key="back_scenario"):
-        clear_arrival_state()
-        st.session_state["page"] = "upload"
-        st.rerun()
-
-    # Header
-    st.markdown(
-        '<div class="scenario-content">'
-            '<div class="scenario-title">Schedule Ship Berthing</div>'
-        '</div>',
-        unsafe_allow_html=True
-    )
-
-    # File card — kolom kiri (HTML: icon + nama file), kolom kanan (tombol X asli)
-    with st.container(key="file_card_box"):
-        col_file, col_x = st.columns([0.85, 0.15])
-        with col_file:
-            st.markdown(
-                f'<div class="file-left">'
-                    f'<div class="excel-icon">X</div>'
-                    f'<div class="file-name">{uploaded_name}</div>'
-                f'</div>',
-                unsafe_allow_html=True
-            )
-        with col_x:
-            if st.button("×", key="remove_file"):
-                if "uploaded_file" in st.session_state:
-                    del st.session_state["uploaded_file"]
-                clear_arrival_state()
-                st.session_state["page"] = "upload"
-                st.rerun()
+    # ── Kalau modal aktif: stop, jangan render tombol scenario ─────
+    if st.session_state.get("show_modal") or st.session_state.get("show_arrival_modal"):
+        return
 
     LOADING_HTML = """
     <style>
@@ -1410,87 +1396,100 @@ def scenario_page():
                 )
                 df_dermaga = load_dermaga()
 
-            pasut_keys = ['LOW_TIDE_1_START_H', 'LOW_TIDE_1_END_H','LOW_TIDE_2_START_H', 'LOW_TIDE_2_END_H']
-            st.session_state["pasut_config"] = {k: CONFIG[k] for k in pasut_keys if k in CONFIG}
+            pasut_keys = ['LOW_TIDE_1_START_H', 'LOW_TIDE_1_END_H',
+                          'LOW_TIDE_2_START_H', 'LOW_TIDE_2_END_H']
+            st.session_state["pasut_config"] = {
+                k: CONFIG[k] for k in pasut_keys if k in CONFIG
+            }
 
             if errors or df_kapal.empty:
                 show_error_modal(errors if errors else ["Data could not be processed."])
                 st.rerun()
-                return
+            else:
+                st.session_state["df_kapal_pending_single"] = df_kapal
+                st.session_state["arrival_info_single"] = arrival_info
+                st.session_state.pop("arrival_decision_single", None)
+                if arrival_info.get("exceeds"):
+                    show_arrival_limit_dialog("single", arrival_info)
+                st.rerun()
 
-            st.session_state["df_kapal_pending_single"] = df_kapal
-            st.session_state["arrival_info_single"] = arrival_info
-            st.session_state.pop("arrival_decision_single", None)
-            if arrival_info.get("exceeds"):
-                show_arrival_limit_dialog("single", arrival_info)
-            st.rerun()
-
-    if (
+    _single_ready = (
         st.session_state.get("df_kapal_pending_single") is not None
+        and not st.session_state.get("show_arrival_modal", False)
         and (
             not st.session_state.get("arrival_info_single", {}).get("exceeds")
             or st.session_state.get("arrival_decision_single") == "limit"
         )
-    ):
-        df_kapal = st.session_state.pop("df_kapal_pending_single")
+    )
+
+    if _single_ready:
+        df_kapal     = st.session_state.pop("df_kapal_pending_single")
         arrival_info = st.session_state.pop("arrival_info_single", {})
-        decision = st.session_state.pop("arrival_decision_single", None)
+        decision     = st.session_state.pop("arrival_decision_single", None)
 
         if decision == "limit":
             df_kapal = limit_to_n_days(df_kapal, arrival_info.get("max_days", 3))
 
         df_dermaga = load_dermaga()
-        run_seed = random.randint(1, 50)
-        loading = st.empty()
-        loading.markdown(LOADING_HTML, unsafe_allow_html=True)
 
-        try:
-            ch1, metrics_ch1 = run_ch1(
-                df_kapal_raw=df_kapal,
-                df_dermaga=df_dermaga,
-                population_size=50,
-                base_seed=run_seed,
-                verbose=True
-            )
+        berth_errors        = check_no_eligible_berth(df_kapal, df_dermaga, CONFIG)
+        single_berth_errors = check_single_berth_insufficient_time(df_kapal, df_dermaga, CONFIG)
+        validation_errors   = berth_errors + single_berth_errors
 
-            lb1, metrics_df1, history_lb1, _ = run_love_bird_optimization(
-                df_kapal=df_kapal,
-                df_dermaga=df_dermaga,
-                initial_solutions=ch1,
-                population_size=50,
-                max_generations=100,
-                seed=run_seed
-            )
+        if validation_errors:
+            show_error_modal(validation_errors)
+            st.rerun()
+        else:
+            run_seed = random.randint(1, 50)
+            loading  = st.empty()
+            loading.markdown(LOADING_HTML, unsafe_allow_html=True)
 
-            df_schedule = lb1["df_schedule"]
-            metrics = {
-                "fitness": lb1.get("fitness"),
-                "total_wait": lb1.get("total_wait"),
-                "n_late": lb1.get("n_late"),
-                "assigned": lb1.get("assigned"),
-                "running_time_s": lb1.get("running_time_s"),
-                "running_time_m": lb1.get("running_time_m"),
-            }
+            try:
+                ch1, metrics_ch1 = run_ch1(
+                    df_kapal_raw=df_kapal,
+                    df_dermaga=df_dermaga,
+                    population_size=50,
+                    base_seed=run_seed,
+                    verbose=True
+                )
+                lb1, metrics_df1, history_lb1, _ = run_love_bird_optimization(
+                    df_kapal=df_kapal,
+                    df_dermaga=df_dermaga,
+                    initial_solutions=ch1,
+                    population_size=50,
+                    max_generations=5,
+                    seed=run_seed
+                )
+                df_schedule = lb1["df_schedule"]
+                metrics = {
+                    "fitness"       : lb1.get("fitness"),
+                    "total_wait"    : lb1.get("total_wait"),
+                    "n_late"        : lb1.get("n_late"),
+                    "assigned"      : lb1.get("assigned"),
+                    "running_time_s": lb1.get("running_time_s"),
+                    "running_time_m": lb1.get("running_time_m"),
+                }
+            except Exception as e:
+                loading.empty()
+                st.error(f"Optimizer failed to run: {e}")
+                st.stop()
 
-        except Exception as e:
+            st.session_state.update({
+                "scenario"              : "single",
+                "run_seed"              : run_seed,
+                "df_kapal_preprocessed" : df_kapal,
+                "df_dermaga"            : df_dermaga,
+                "ch1"                   : ch1,
+                "metrics_ch1"           : metrics_ch1,
+                "lb1"                   : lb1,
+                "metrics_df1"           : metrics_df1,
+                "history_lb1"           : history_lb1,
+                "result"                : df_schedule,
+                "metrics"               : metrics,
+                "page"                  : "result",
+            })
             loading.empty()
-            st.error(f"Optimizer failed to run: {e}")
-            return
-
-        st.session_state["scenario"] = "single"
-        st.session_state["run_seed"] = run_seed
-        st.session_state["df_kapal_preprocessed"] = df_kapal
-        st.session_state["df_dermaga"] = df_dermaga
-        st.session_state["ch1"] = ch1
-        st.session_state["metrics_ch1"] = metrics_ch1
-        st.session_state["lb1"] = lb1
-        st.session_state["metrics_df1"] = metrics_df1
-        st.session_state["history_lb1"] = history_lb1
-        st.session_state["result"] = df_schedule
-        st.session_state["metrics"] = metrics
-        st.session_state["page"] = "result"
-        loading.empty()
-        st.rerun()
+            st.rerun()
 
     with col_reberth:
         if st.button("Re-berthing Scenario", key="reberthing_scenario"):
@@ -1502,90 +1501,102 @@ def scenario_page():
                 df_dermaga = load_dermaga()
 
             pasut_keys = ['LOW_TIDE_1_START_H', 'LOW_TIDE_1_END_H',
-                'LOW_TIDE_2_START_H', 'LOW_TIDE_2_END_H']
-            st.session_state["pasut_config"] = {k: CONFIG[k] for k in pasut_keys if k in CONFIG}
+                          'LOW_TIDE_2_START_H', 'LOW_TIDE_2_END_H']
+            st.session_state["pasut_config"] = {
+                k: CONFIG[k] for k in pasut_keys if k in CONFIG
+            }
+
             if errors or df_kapal.empty:
                 show_error_modal(errors if errors else ["Data could not be processed."])
                 st.rerun()
-                return
+            else:
+                st.session_state["df_kapal_pending_reberthing"] = df_kapal
+                st.session_state["arrival_info_reberthing"]     = arrival_info
+                st.session_state.pop("arrival_decision_reberthing", None)
+                if arrival_info.get("exceeds"):
+                    show_arrival_limit_dialog("reberthing", arrival_info)
+                st.rerun()
 
-            st.session_state["df_kapal_pending_reberthing"] = df_kapal
-            st.session_state["arrival_info_reberthing"] = arrival_info
-            st.session_state.pop("arrival_decision_reberthing", None)
-            if arrival_info.get("exceeds"):
-                show_arrival_limit_dialog("reberthing", arrival_info)
-            st.rerun()
-
-    if (
+    _reberth_ready = (
         st.session_state.get("df_kapal_pending_reberthing") is not None
+        and not st.session_state.get("show_arrival_modal", False)
         and (
             not st.session_state.get("arrival_info_reberthing", {}).get("exceeds")
             or st.session_state.get("arrival_decision_reberthing") == "limit"
         )
-    ):
-        df_kapal = st.session_state.pop("df_kapal_pending_reberthing")
+    )
+
+    if _reberth_ready:
+        df_kapal     = st.session_state.pop("df_kapal_pending_reberthing")
         arrival_info = st.session_state.pop("arrival_info_reberthing", {})
-        decision = st.session_state.pop("arrival_decision_reberthing", None)
+        decision     = st.session_state.pop("arrival_decision_reberthing", None)
 
         if decision == "limit":
             df_kapal = limit_to_n_days(df_kapal, arrival_info.get("max_days", 3))
 
-        df_dermaga = load_dermaga()
-        run_seed = random.randint(1, 50)
-        loading = st.empty()
-        loading.markdown(LOADING_HTML, unsafe_allow_html=True)
+        df_dermaga   = load_dermaga()
+        berth_errors = check_no_eligible_berth(df_kapal, df_dermaga, CONFIG)
 
-        try:
-            ch2, metrics_ch2 = run_ch2(
-                df_kapal_raw=df_kapal,
-                df_dermaga=df_dermaga,
-                population_size=20,
-                base_seed=run_seed,
-                verbose=True
-            )
+        if berth_errors:
+            show_error_modal(berth_errors)
+            st.rerun()
+        else:
+            run_seed = random.randint(1, 50)
+            loading  = st.empty()
+            loading.markdown(LOADING_HTML, unsafe_allow_html=True)
 
-            lb2, metrics_df2, history_lb2, _ = run_love_bird_s2(
-                df_kapal_raw=df_kapal,
-                df_dermaga=df_dermaga,
-                initial_solutions=ch2,
-                population_size=20,
-                max_generations=30,
-                seed=run_seed
-            )
+            try:
+                ch2, metrics_ch2 = run_ch2(
+                    df_kapal_raw=df_kapal,
+                    df_dermaga=df_dermaga,
+                    population_size=20,
+                    base_seed=run_seed,
+                    verbose=True
+                )
+                lb2, metrics_df2, history_lb2, _ = run_love_bird_s2(
+                    df_kapal_raw=df_kapal,
+                    df_dermaga=df_dermaga,
+                    initial_solutions=ch2,
+                    population_size=20,
+                    max_generations=30,
+                    seed=run_seed
+                )
+                df_schedule = lb2["df_schedule"]
+                metrics = {
+                    "fitness"       : lb2.get("fitness"),
+                    "total_wait"    : lb2.get("total_wait"),
+                    "n_late"        : lb2.get("n_late"),
+                    "total_reberth" : lb2.get("total_reberth"),
+                    "assigned"      : lb2.get("assigned"),
+                    "running_time_s": lb2.get("running_time_s"),
+                    "running_time_m": lb2.get("running_time_m"),
+                }
+            except Exception as e:
+                loading.empty()
+                st.error(f"Optimizer failed to run: {e}")
+                st.stop()
 
-            df_schedule = lb2["df_schedule"]
-            metrics = {
-                "fitness":        lb2.get("fitness"),
-                "total_wait":     lb2.get("total_wait"),
-                "n_late":         lb2.get("n_late"),
-                "total_reberth":  lb2.get("total_reberth"),
-                "assigned":       lb2.get("assigned"),
-                "running_time_s": lb2.get("running_time_s"),
-                "running_time_m": lb2.get("running_time_m"),
-            }
-
-        except Exception as e:
+            st.session_state.update({
+                "scenario"              : "reberthing",
+                "run_seed"              : run_seed,
+                "df_kapal_preprocessed" : df_kapal,
+                "df_dermaga"            : df_dermaga,
+                "ch2"                   : ch2,
+                "metrics_ch2"           : metrics_ch2,
+                "lb2"                   : lb2,
+                "metrics_df2"           : metrics_df2,
+                "history_lb2"           : history_lb2,
+                "result"                : df_schedule,
+                "metrics"               : metrics,
+                "page"                  : "result",
+            })
             loading.empty()
-            st.error(f"Optimizer failed to run: {e}")
-            return
-
-        st.session_state["scenario"]              = "reberthing"
-        st.session_state["run_seed"]              = run_seed
-        st.session_state["df_kapal_preprocessed"] = df_kapal
-        st.session_state["df_dermaga"]            = df_dermaga
-        st.session_state["ch2"]                   = ch2
-        st.session_state["metrics_ch2"]           = metrics_ch2
-        st.session_state["lb2"]                   = lb2
-        st.session_state["metrics_df2"]           = metrics_df2
-        st.session_state["history_lb2"]           = history_lb2
-        st.session_state["result"]                = df_schedule
-        st.session_state["metrics"]               = metrics
-        st.session_state["page"]                  = "result"
-        loading.empty()
-        st.rerun()
+            st.rerun()
 
 
 def result_page():
+    st.markdown(SHARED_PAGE_CSS, unsafe_allow_html=True)
+
     st.markdown("""
     <style>
     .stApp { background: #ffffff; }
@@ -1596,11 +1607,7 @@ def result_page():
         padding-bottom: 0rem !important;
         max-width: 100% !important;
     }
-    :root {
-        --header-h: clamp(64px, 9vw, 90px);
-        --back-btn-size: clamp(44px, 8vw, 60px);
-        --back-icon-size: clamp(24px, 5vw, 34px);
-    }
+
     .top-gradient {
         position: fixed;
         top: 0; left: 0;
@@ -1608,29 +1615,53 @@ def result_page():
         background: linear-gradient(90deg, #e97845 0%, #554797 100%);
         z-index: 1;
     }
+
     .st-key-back_result button {
         position: fixed;
         top: calc((var(--header-h) - var(--back-btn-size)) / 2);
         left: clamp(12px, 3vw, 24px);
         z-index: 9999;
+
         width: var(--back-btn-size) !important;
         height: var(--back-btn-size) !important;
+        min-width: var(--back-btn-size) !important;
+
         background: transparent !important;
         border: none !important;
+        border-radius: 0 !important;
         box-shadow: none !important;
         padding: 0 !important;
+        margin: 0 !important;
+
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
     }
+
     .st-key-back_result button p {
         margin: 0 !important;
         font-size: var(--back-icon-size) !important;
+        line-height: 1 !important;
         font-weight: 700 !important;
         color: white !important;
     }
+
     .st-key-back_result button:hover,
     .st-key-back_result button:focus {
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
+    }
+
+    .result-title {
+        font-size: clamp(23px, 3.6vw, 36px);
+        font-weight: 800;
+        color: #000000;
+        white-space: nowrap;
+        text-align: center;
+        margin-top: calc(var(--header-h) + calc(var(--u) * 1));
+        margin-bottom: calc(var(--u) * 1.5);
+        padding: 0 16px;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -1639,23 +1670,10 @@ def result_page():
 
     if st.button("❮", key="back_result"):
         for key in [
-            "result",
-            "metrics",
-            "metrics_ch1",
-            "metrics_df1",
-            "history_lb1",
-            "metrics_ch2",
-            "metrics_df2",
-            "history_lb2",
-            "initial_solutions",
-            "df_kapal_preprocessed",
-            "df_dermaga",
-            "ch1",
-            "lb1",
-            "ch2",
-            "lb2",
-            "run_seed",
-            "pasut_config", 
+            "result", "metrics", "metrics_ch1", "metrics_df1", "history_lb1",
+            "metrics_ch2", "metrics_df2", "history_lb2", "initial_solutions",
+            "df_kapal_preprocessed", "df_dermaga", "ch1", "lb1", "ch2", "lb2",
+            "run_seed", "pasut_config",
         ]:
             if key in st.session_state:
                 del st.session_state[key]
@@ -1664,11 +1682,7 @@ def result_page():
         st.rerun()
 
     st.markdown(
-        '<div style="padding-top:calc(var(--header-h) + clamp(8px, 2.5vw, 32px)); text-align:center;">'
-        '<div style="font-size:clamp(18px,3.5vw,42px); font-weight:800; color:#000; margin-bottom:clamp(14px, 2.5vw, 28px); font-family:Poppins,sans-serif; padding:0 16px;">'
-        'Berthing schedules have been generated!'
-        '</div>'
-        '</div>',
+        '<div class="result-title">Berthing schedules have been generated!</div>',
         unsafe_allow_html=True
     )
 
