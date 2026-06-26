@@ -1457,7 +1457,7 @@ def scenario_page():
                     df_dermaga=df_dermaga,
                     initial_solutions=ch1,
                     population_size=50,
-                    max_generations=5,
+                    max_generations=100,
                     seed=run_seed
                 )
                 df_schedule = lb1["df_schedule"]
