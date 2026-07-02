@@ -1388,7 +1388,8 @@ def scenario_page():
     col_single, col_reberth = st.columns([1, 1])
 
     with col_single:
-        if st.button("Single Berthing Scenario", key="single_scenario"):
+        if st.button("Single Berthing Scenario", key="single_scenario",disabled=st.session_state.get("optimizing_single", False)
+                  or st.session_state.get("optimizing_reberthing", False)):
             with st.spinner("Preprocessing..."):
                 df_kapal, errors, arrival_info = preprocess(
                     st.session_state["uploaded_file"],
@@ -1422,7 +1423,7 @@ def scenario_page():
         )
     )
 
-    if _single_ready:
+    if _single_ready and not st.session_state.get("optimizing_single"):
         df_kapal     = st.session_state.pop("df_kapal_pending_single")
         arrival_info = st.session_state.pop("arrival_info_single", {})
         decision     = st.session_state.pop("arrival_decision_single", None)
@@ -1440,59 +1441,76 @@ def scenario_page():
             show_error_modal(validation_errors)
             st.rerun()
         else:
-            run_seed = random.randint(1, 50)
-            loading  = st.empty()
-            loading.markdown(LOADING_HTML, unsafe_allow_html=True)
-
-            try:
-                ch1, metrics_ch1 = run_ch1(
-                    df_kapal_raw=df_kapal,
-                    df_dermaga=df_dermaga,
-                    population_size=50,
-                    base_seed=run_seed,
-                    verbose=True
-                )
-                lb1, metrics_df1, history_lb1, _ = run_love_bird_optimization(
-                    df_kapal=df_kapal,
-                    df_dermaga=df_dermaga,
-                    initial_solutions=ch1,
-                    population_size=50,
-                    max_generations=100,
-                    seed=run_seed
-                )
-                df_schedule = lb1["df_schedule"]
-                metrics = {
-                    "fitness"       : lb1.get("fitness"),
-                    "total_wait"    : lb1.get("total_wait"),
-                    "n_late"        : lb1.get("n_late"),
-                    "assigned"      : lb1.get("assigned"),
-                    "running_time_s": lb1.get("running_time_s"),
-                    "running_time_m": lb1.get("running_time_m"),
-                }
-            except Exception as e:
-                loading.empty()
-                st.error(f"Optimizer failed to run: {e}")
-                st.stop()
-
-            st.session_state.update({
-                "scenario"              : "single",
-                "run_seed"              : run_seed,
-                "df_kapal_preprocessed" : df_kapal,
-                "df_dermaga"            : df_dermaga,
-                "ch1"                   : ch1,
-                "metrics_ch1"           : metrics_ch1,
-                "lb1"                   : lb1,
-                "metrics_df1"           : metrics_df1,
-                "history_lb1"           : history_lb1,
-                "result"                : df_schedule,
-                "metrics"               : metrics,
-                "page"                  : "result",
-            })
-            loading.empty()
+            st.session_state["optimizing_single"] = True
+            st.session_state["optimize_input_single"] = {
+                "df_kapal": df_kapal,
+                "df_dermaga": df_dermaga,
+                "run_seed": random.randint(1, 50),
+            }
+            st.markdown(LOADING_HTML, unsafe_allow_html=True)
             st.rerun()
 
+    if st.session_state.get("optimizing_single"):
+        st.markdown(LOADING_HTML, unsafe_allow_html=True)
+
+        payload    = st.session_state["optimize_input_single"]
+        df_kapal   = payload["df_kapal"]
+        df_dermaga = payload["df_dermaga"]
+        run_seed   = payload["run_seed"]
+
+        try:
+            ch1, metrics_ch1 = run_ch1(
+                df_kapal_raw=df_kapal,
+                df_dermaga=df_dermaga,
+                population_size=50,
+                base_seed=run_seed,
+                verbose=True
+            )
+            lb1, metrics_df1, history_lb1, _ = run_love_bird_optimization(
+                df_kapal=df_kapal,
+                df_dermaga=df_dermaga,
+                initial_solutions=ch1,
+                population_size=50,
+                max_generations=50,
+                seed=run_seed
+            )
+            df_schedule = lb1["df_schedule"]
+            metrics = {
+                "fitness"       : lb1.get("fitness"),
+                "total_wait"    : lb1.get("total_wait"),
+                "n_late"        : lb1.get("n_late"),
+                "assigned"      : lb1.get("assigned"),
+                "running_time_s": lb1.get("running_time_s"),
+                "running_time_m": lb1.get("running_time_m"),
+            }
+        except Exception as e:
+            st.session_state.pop("optimizing_single", None)
+            st.session_state.pop("optimize_input_single", None)
+            st.error(f"Optimizer failed to run: {e}")
+            st.stop()
+
+        st.session_state.pop("optimizing_single", None)
+        st.session_state.pop("optimize_input_single", None)
+        st.session_state.update({
+            "scenario"              : "single",
+            "run_seed"              : run_seed,
+            "df_kapal_preprocessed" : df_kapal,
+            "df_dermaga"            : df_dermaga,
+            "ch1"                   : ch1,
+            "metrics_ch1"           : metrics_ch1,
+            "lb1"                   : lb1,
+            "metrics_df1"           : metrics_df1,
+            "history_lb1"           : history_lb1,
+            "result"                : df_schedule,
+            "metrics"               : metrics,
+            "page"                  : "result",
+        })
+        st.rerun()
+
     with col_reberth:
-        if st.button("Re-berthing Scenario", key="reberthing_scenario"):
+        if st.button("Re-berthing Scenario", key="reberthing_scenario",
+                    disabled=st.session_state.get("optimizing_single", False)
+                            or st.session_state.get("optimizing_reberthing", False)):
             with st.spinner("Preprocessing..."):
                 df_kapal, errors, arrival_info = preprocess(
                     st.session_state["uploaded_file"],
@@ -1526,7 +1544,7 @@ def scenario_page():
         )
     )
 
-    if _reberth_ready:
+    if _reberth_ready and not st.session_state.get("optimizing_reberthing"):
         df_kapal     = st.session_state.pop("df_kapal_pending_reberthing")
         arrival_info = st.session_state.pop("arrival_info_reberthing", {})
         decision     = st.session_state.pop("arrival_decision_reberthing", None)
@@ -1541,57 +1559,72 @@ def scenario_page():
             show_error_modal(berth_errors)
             st.rerun()
         else:
-            run_seed = random.randint(1, 50)
-            loading  = st.empty()
-            loading.markdown(LOADING_HTML, unsafe_allow_html=True)
-
-            try:
-                ch2, metrics_ch2 = run_ch2(
-                    df_kapal_raw=df_kapal,
-                    df_dermaga=df_dermaga,
-                    population_size=20,
-                    base_seed=run_seed,
-                    verbose=True
-                )
-                lb2, metrics_df2, history_lb2, _ = run_love_bird_s2(
-                    df_kapal_raw=df_kapal,
-                    df_dermaga=df_dermaga,
-                    initial_solutions=ch2,
-                    population_size=20,
-                    max_generations=30,
-                    seed=run_seed
-                )
-                df_schedule = lb2["df_schedule"]
-                metrics = {
-                    "fitness"       : lb2.get("fitness"),
-                    "total_wait"    : lb2.get("total_wait"),
-                    "n_late"        : lb2.get("n_late"),
-                    "total_reberth" : lb2.get("total_reberth"),
-                    "assigned"      : lb2.get("assigned"),
-                    "running_time_s": lb2.get("running_time_s"),
-                    "running_time_m": lb2.get("running_time_m"),
-                }
-            except Exception as e:
-                loading.empty()
-                st.error(f"Optimizer failed to run: {e}")
-                st.stop()
-
-            st.session_state.update({
-                "scenario"              : "reberthing",
-                "run_seed"              : run_seed,
-                "df_kapal_preprocessed" : df_kapal,
-                "df_dermaga"            : df_dermaga,
-                "ch2"                   : ch2,
-                "metrics_ch2"           : metrics_ch2,
-                "lb2"                   : lb2,
-                "metrics_df2"           : metrics_df2,
-                "history_lb2"           : history_lb2,
-                "result"                : df_schedule,
-                "metrics"               : metrics,
-                "page"                  : "result",
-            })
-            loading.empty()
+            st.session_state["optimizing_reberthing"] = True
+            st.session_state["optimize_input_reberthing"] = {
+                "df_kapal": df_kapal,
+                "df_dermaga": df_dermaga,
+                "run_seed": random.randint(1, 50),
+            }
+            st.markdown(LOADING_HTML, unsafe_allow_html=True)
             st.rerun()
+
+    if st.session_state.get("optimizing_reberthing"):
+        st.markdown(LOADING_HTML, unsafe_allow_html=True)
+
+        payload    = st.session_state["optimize_input_reberthing"]
+        df_kapal   = payload["df_kapal"]
+        df_dermaga = payload["df_dermaga"]
+        run_seed   = payload["run_seed"]
+
+        try:
+            ch2, metrics_ch2 = run_ch2(
+                df_kapal_raw=df_kapal,
+                df_dermaga=df_dermaga,
+                population_size=20,
+                base_seed=run_seed,
+                verbose=True
+            )
+            lb2, metrics_df2, history_lb2, _ = run_love_bird_s2(
+                df_kapal_raw=df_kapal,
+                df_dermaga=df_dermaga,
+                initial_solutions=ch2,
+                population_size=20,
+                max_generations=30,
+                seed=run_seed
+            )
+            df_schedule = lb2["df_schedule"]
+            metrics = {
+                "fitness"       : lb2.get("fitness"),
+                "total_wait"    : lb2.get("total_wait"),
+                "n_late"        : lb2.get("n_late"),
+                "total_reberth" : lb2.get("total_reberth"),
+                "assigned"      : lb2.get("assigned"),
+                "running_time_s": lb2.get("running_time_s"),
+                "running_time_m": lb2.get("running_time_m"),
+            }
+        except Exception as e:
+            st.session_state.pop("optimizing_reberthing", None)
+            st.session_state.pop("optimize_input_reberthing", None)
+            st.error(f"Optimizer failed to run: {e}")
+            st.stop()
+
+        st.session_state.pop("optimizing_reberthing", None)
+        st.session_state.pop("optimize_input_reberthing", None)
+        st.session_state.update({
+            "scenario"              : "reberthing",
+            "run_seed"              : run_seed,
+            "df_kapal_preprocessed" : df_kapal,
+            "df_dermaga"            : df_dermaga,
+            "ch2"                   : ch2,
+            "metrics_ch2"           : metrics_ch2,
+            "lb2"                   : lb2,
+            "metrics_df2"           : metrics_df2,
+            "history_lb2"           : history_lb2,
+            "result"                : df_schedule,
+            "metrics"               : metrics,
+            "page"                  : "result",
+        })
+        st.rerun()
 
 
 def result_page():
@@ -1654,14 +1687,17 @@ def result_page():
     }
 
     .result-title {
-        font-size: clamp(23px, 3.6vw, 36px);
+        font-size: clamp(20px, 3.6vw, 36px);
         font-weight: 800;
         color: #000000;
-        white-space: nowrap;
+        white-space: normal;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
         text-align: center;
+        line-height: 1.25;
         margin-top: calc(var(--header-h) + calc(var(--u) * 1));
         margin-bottom: calc(var(--u) * 1.5);
-        padding: 0 16px;
+        padding: 0 20px;
     }
     </style>
     """, unsafe_allow_html=True)
